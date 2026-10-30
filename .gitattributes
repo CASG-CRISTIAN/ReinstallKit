@@ -1,0 +1,4 @@
+# A Windows project: text files are checked out with CRLF everywhere, as Inno Setup and Excel write them.
+# The catalogs (*.csv) are ANSI (Windows-1252) on purpose; git keeps their bytes as they are.
+* text=auto eol=crlf
+*.png binary

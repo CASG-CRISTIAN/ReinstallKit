@@ -1,0 +1,7 @@
+# The compiled installer, and the logs and screenshots of test runs that end up beside it
+output/
+
+# Windows and Excel leftovers
+Thumbs.db
+desktop.ini
+~$*

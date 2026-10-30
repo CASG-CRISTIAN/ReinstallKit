@@ -1,0 +1,62 @@
+{
+  "NoAds": {
+    "Content": "Windows Suggestions and Ads - Disable",
+    "Description": "Suggested apps, tips and 'finish setting up' prompts in Start, Settings, the lock screen and File Explorer.",
+    "registry": [
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SilentInstalledAppsEnabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SystemPaneSuggestionsEnabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SoftLandingEnabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SubscribedContent-310093Enabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SubscribedContent-338388Enabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SubscribedContent-338389Enabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SubscribedContent-353694Enabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\ContentDeliveryManager", "Name": "SubscribedContent-353696Enabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "Name": "ShowSyncProviderNotifications", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced", "Name": "Start_IrisRecommendations", "Type": "DWord", "Value": "0", "OriginalValue": "1" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\UserProfileEngagement", "Name": "ScoobeSystemSettingEnabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" }
+    ]
+  },
+  "NoWebSearch": {
+    "Content": "Start Menu Web Search (Bing) - Disable",
+    "Description": "WinUtil's BingSearch toggle plus the policy that recent Windows 11 versions honor.",
+    "registry": [
+      { "Path": "HKCU:\\Software\\Policies\\Microsoft\\Windows\\Explorer", "Name": "DisableSearchBoxSuggestions", "Type": "DWord", "Value": "1", "OriginalValue": "<RemoveEntry>" },
+      { "Path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Search", "Name": "BingSearchEnabled", "Type": "DWord", "Value": "0", "OriginalValue": "1" }
+    ]
+  },
+  "Debloat": {
+    "Content": "Rarely Used Preinstalled Apps - Remove",
+    "Description": "For every user. They can be installed again from the Microsoft Store.",
+    "InvokeScript": [
+      "Get-AppxPackage -AllUsers | Where-Object { $_.Name -in @('Microsoft.BingNews', 'Microsoft.Getstarted', 'Microsoft.MicrosoftSolitaireCollection', 'Clipchamp.Clipchamp', 'Microsoft.WindowsFeedbackHub', 'Microsoft.MicrosoftOfficeHub', 'Microsoft.549981C3F5F10', 'MicrosoftCorporationII.MicrosoftFamily', 'Microsoft.PowerAutomateDesktop', 'Microsoft.People') -or $_.Name -like '*CandyCrush*' -or $_.Name -like '*king.com*' -or $_.Name -like '*Disney*' -or $_.Name -like '*TikTok*' } | Remove-AppxPackage -AllUsers"
+    ]
+  },
+  "DeleteTempFiles": {
+    "Content": "Temporary Files - Remove",
+    "Description": "WinUtil's DeleteTempFiles, but keeping Setup's own folder, which holds these scripts.",
+    "InvokeScript": [
+      "Get-ChildItem -Path $Env:Temp, \"$Env:SystemRoot\\Temp\" -Force -ErrorAction SilentlyContinue | Where-Object Name -ne (Split-Path $SetupFolder -Leaf) | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue"
+    ]
+  },
+  "DisableMPO": {
+    "Content": "Multiplane Overlay - Disable (Compatibility)",
+    "Description": "The 'Disabled (Compatibility)' choice of WinUtil's Multiplane Overlay setting.",
+    "registry": [
+      { "Path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\Dwm", "Name": "OverlayTestMode", "Type": "DWord", "Value": "5", "OriginalValue": "<RemoveEntry>" }
+    ]
+  },
+  "UltimatePerformance": {
+    "Content": "Ultimate Performance Profile - Enable",
+    "Description": "What WinUtil's button does, with a fixed GUID for the copy so running it again does not add another one.",
+    "InvokeScript": [
+      "powercfg /duplicatescheme e9a42b02-d5df-448d-aa00-03f14749eb61 57567a23-9868-4671-9429-f3f38d6cea09 | Out-Null\npowercfg /setactive 57567a23-9868-4671-9429-f3f38d6cea09"
+    ]
+  },
+  "RemoveOneDrive": {
+    "Content": "Microsoft OneDrive - Remove",
+    "Description": "WinUtil's RemoveOneDrive, but retrying the leftover files that stay in use a few seconds after the uninstaller instead of stopping the rest.",
+    "InvokeScript": [
+      "$OneDrivePath = $Env:OneDrive\n$OneDriveFolderExists = -not [string]::IsNullOrWhiteSpace($OneDrivePath) -and (Test-Path -LiteralPath $OneDrivePath -PathType Container -ErrorAction Stop)\n\nif ($OneDriveFolderExists) {\n    $OneDriveAcl = Get-Acl -LiteralPath $OneDrivePath -ErrorAction Stop\n} else {\n    Write-Host \"OneDrive folder is already absent; skipping folder permissions and cleanup.\"\n}\n\ntry {\n    if ($OneDriveFolderExists) {\n        # Protect user files while the uninstaller runs.\n        icacls $OneDrivePath /deny \"*S-1-5-32-544:(D,DC)\"\n        if ($LASTEXITCODE -ne 0) { throw \"Unable to protect the OneDrive folder (icacls exit code $LASTEXITCODE).\" }\n    }\n\n    Write-Host \"Uninstalling OneDrive...\"\n    Start-Process -FilePath (Join-Path $Env:SystemRoot \"System32\\OneDriveSetup.exe\") -ArgumentList '/uninstall' -Wait -ErrorAction Stop\n\n    # Some of OneDrive files use explorer, and OneDrive uses FileCoAuth\n    Write-Host \"Removing leftover OneDrive Files...\"\n\n    Get-Process -ErrorAction Stop | Where-Object ProcessName -eq 'FileCoAuth' | Stop-Process -ErrorAction Stop\n    Get-Process -ErrorAction Stop | Where-Object ProcessName -eq 'Explorer' | Stop-Process -ErrorAction Stop\n\n    # Some files stay in use for a few seconds after the uninstaller, and a single try stopped the rest of\n    # the cleanup: up to five tries, two seconds apart; whatever is still locked is said and left.\n    $OneDriveLeftovers = @(\"$Env:LocalAppData\\Microsoft\\OneDrive\", \"$Env:ProgramData\\Microsoft OneDrive\")\n    foreach ($LeftoverPath in $OneDriveLeftovers) {\n        for ($Try = 1; ($Try -le 5) -and (Test-Path -LiteralPath $LeftoverPath); $Try++) {\n            if ($Try -gt 1) { Start-Sleep -Seconds 2 }\n            Get-Process -Name 'OneDrive*', 'FileCoAuth', 'Microsoft.SharePoint' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue\n            Remove-Item -LiteralPath $LeftoverPath -Recurse -Force -ErrorAction SilentlyContinue\n        }\n        if (Test-Path -LiteralPath $LeftoverPath) { Write-Host \"Still in use, left in place: $LeftoverPath\" }\n    }\n} finally {\n    if ($OneDriveFolderExists) {\n        # Restore access even when uninstall or leftover cleanup fails.\n        Set-Acl -LiteralPath $OneDrivePath -AclObject $OneDriveAcl -ErrorAction Stop\n    }\n}\n\nif ($OneDriveFolderExists -and -not (Get-ChildItem -LiteralPath $OneDrivePath -Force -ErrorAction Stop)) {\n    # Refuse to delete if files appeared after the emptiness check.\n    [System.IO.Directory]::Delete($OneDrivePath, $false)\n    [Environment]::SetEnvironmentVariable('OneDrive', $null, 'User')\n}\n\n# OneSyncSvc is a per-user template; Get-Service only exposes user instances.\n# Skip the operation if this Windows installation has no template.\nif (Test-Path -LiteralPath 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\OneSyncSvc') {\n    Set-Service -Name OneSyncSvc -StartupType Disabled\n}"
+    ]
+  }
+}
